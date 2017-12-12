@@ -70,9 +70,11 @@ function writeFile(fileName, resourceCollection) {
 
             // response
             const positiveResponse = getPositiveResponse(httpMethod, resource);
+            const responseContentType = getFirstResponseContentType(httpMethod, resource);
             fileContent += '#### Example Response\n\n' +
                 '```http\n' +
                 `HTTP/1.1 ${positiveResponse.statusCode} ${positiveResponse.description}\n` +
+                (responseContentType && `Content-Type: ${getFirstResponseContentType(httpMethod, resource)}\n`) +
                 '```\n\n';
 
             if (positiveResponse.statusCode !== '204') {
@@ -81,6 +83,7 @@ function writeFile(fileName, resourceCollection) {
         });
     });
 
+    fs.writeFileSync(fileName, fileContent);
     console.log(fileContent);
 }
 
@@ -98,9 +101,17 @@ function getResourceCollectionDescription(resourceCollection) {
 }
 
 function getEndpointUri(httpMethod, resource) {
+    let params = _.map(getQueryParameters(resource[httpMethod]), p => {
+       return `${p['name']}={${p['name'].replace('.')}}`;
+    });
+
+    if (params && params.length) {
+        params = '?' + params.join('\n&');
+    }
+
     const result =
         '```endpoint\n' +
-        `${httpMethod.toUpperCase()} ${getResourceFormattedUrl(resource)}\n` +
+        `${httpMethod.toUpperCase()} ${getResourceFormattedUrl(resource)}${params}\n` +
         '```\n\n';
 
     return result;
@@ -205,10 +216,16 @@ function getPositiveResponse(httpMethod, resource) {
     })[0];
 
     return Object.assign( { statusCode: actionKey}, action['responses'][actionKey] );
-    // return new {
-    //     statusCode: actionKey,
-    //     ...action['responses'][actionKey]
-    // }
+}
+
+function getFirstResponseContentType(httpMethod, resource) {
+    const action = resource[httpMethod];
+    return action['produces'][0];
+}
+
+function getFirstAcceptedContentType(httpMethod, resource) {
+    const action = resource[httpMethod];
+    return action['consumes'][0];
 }
 
 function Request(data, definitions) {
