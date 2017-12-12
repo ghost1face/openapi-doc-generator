@@ -102,7 +102,7 @@ function getResourceCollectionDescription(resourceCollection) {
 
 function getEndpointUri(httpMethod, resource) {
     let params = _.map(getQueryParameters(resource[httpMethod]), p => {
-       return `${p['name']}={${p['name'].replace('.')}}`;
+       return `${p['name']}={${p['name'].replace('.', '')}}`;
     });
 
     if (params && params.length) {
