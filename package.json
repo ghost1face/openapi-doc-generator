@@ -1,0 +1,17 @@
+{
+  "name": "swagger-markdown-generator",
+  "version": "1.0.0",
+  "description": "Generate markdown api documentation for use in docbox",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "markdown"
+  ],
+  "author": "Daniel Destouche",
+  "license": "ISC",
+  "dependencies": {
+    "lodash": "^4.17.4"
+  }
+}
