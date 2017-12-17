@@ -26,12 +26,12 @@ const mappedResources = _.map(swaggerDoc.paths, function (data, key) {
     return data;
 });
 
-const filteredSwaggerResources = _.filter(mappedResources, function (path, indexOrKey) {
+/*const filteredSwaggerResources = _.filter(mappedResources, function (path, indexOrKey) {
     return path._key.indexOf('v{version}') > -1;
-});
+});*/
 
-const groupedResources = _.groupBy(filteredSwaggerResources, function (resource) {
-    return resource._key.replace('/v{version}/', '').split('/')[0];
+const groupedResources = _.groupBy(mappedResources, function (resource) {
+    return resource._key.replace('/v{version}/', '').split('/')[2];
 });
 
 // console.log(groupedResources);
@@ -49,7 +49,7 @@ function writeFile(fileName, resourceCollection) {
         `## ${getResourceCollectionTitle(resourceCollection)}\n\n` +
         `${getResourceCollectionDescription(resourceCollection)}\n\n`;
 
-    _.forEach(resourceCollection, function(resource) {
+    _.forEach(resourceCollection, function (resource) {
         _.forEach(httpMethods, function (httpMethod) {
             let endpoint = resource[httpMethod];
 
@@ -62,7 +62,7 @@ function writeFile(fileName, resourceCollection) {
                 '#### Example Request\n\n';
 
 
-            _.forEach(languages, function(language) {
+            _.forEach(languages, function (language) {
                 fileContent += getSampleApiCode(resource, httpMethod, language);
             });
 
@@ -75,10 +75,19 @@ function writeFile(fileName, resourceCollection) {
                 '```http\n' +
                 `HTTP/1.1 ${positiveResponse.statusCode} ${positiveResponse.description}\n` +
                 (responseContentType && `Content-Type: ${getFirstResponseContentType(httpMethod, resource)}\n`) +
-                '```\n\n';
+                '```\n';
 
             if (positiveResponse.statusCode !== '204') {
-                // if no content build response
+                let responseExample = getPositiveResponseExample(resource[httpMethod], positiveResponse.statusCode);
+                if (typeof responseExample !== 'undefined') {
+                    // if no content build response
+                    fileContent += '```json\n' +
+                        `${JSON.stringify(responseExample, null, 2)}\n` +
+                        '```\n\n';
+                }
+            }
+            else {
+                fileContent += '\n';
             }
         });
     });
@@ -102,11 +111,11 @@ function getResourceCollectionDescription(resourceCollection) {
 
 function getEndpointUri(httpMethod, resource) {
     let params = _.map(getQueryParameters(resource[httpMethod]), p => {
-       return `${p['name']}={${p['name'].replace('.', '')}}`;
+        return `${p['name']}={${p['name'].replace('.', '')}}`;
     });
 
     if (params && params.length) {
-        params = '?' + params.join('\n&');
+        params = '?' + params.join('\n        &');
     }
 
     const result =
@@ -117,7 +126,7 @@ function getEndpointUri(httpMethod, resource) {
     return result;
 }
 
-function getResourceFormattedUrl(resource){
+function getResourceFormattedUrl(resource) {
     const uri = resource._key;
 
     /*return uri.replace(/{(\w*)}/g, function(match, key) {
@@ -129,40 +138,41 @@ function getResourceFormattedUrl(resource){
 
 function getSampleApiCode(resource, httpMethod, language) {
     const request = buildRequest(httpMethod, resource);
-    const requestString =renderRequest(language, request);
+    const requestString = renderRequest(language, request);
 
     return '```' + language + '\n' +
-    requestString + '\n' +
-    '```\n\n';
+        requestString + '\n' +
+        '```\n\n';
 }
 
 function buildRequest(httpMethod, resource) {
     const uri = getResourceFormattedUrl(resource);
     const headers = {
         'Authorization': 'Bearer {Token}',
-        'Accept': 'application/json, text/json'
+        'Accept': 'application/json, text/json',
+        'Content-Type': 'application/json'
     };
     const queryParams = getQueryParameters(resource[httpMethod]);
     const requestBody = getBodyParameters(resource[httpMethod]);
 
     return new Request({
-       uri: uri,
-       method: httpMethod,
-       headers: headers,
-       query: queryParams,
-       body: requestBody
+        uri: uri,
+        method: httpMethod,
+        headers: headers,
+        query: queryParams,
+        body: requestBody
     });
 }
 
 function getQueryParameters(resourceItem) {
-    return _.filter(resourceItem['parameters'], function(param) {
+    return _.filter(resourceItem['parameters'], function (param) {
         return param['in'] === 'query';
     });
 }
 
 function getBodyParameters(resourceItem) {
-    return _.filter(resourceItem['parameters'], function(param) {
-       return param['in'] === 'body';
+    return _.filter(resourceItem['parameters'], function (param) {
+        return param['in'] === 'body';
     });
 }
 
@@ -181,16 +191,16 @@ function getCURLRequest(request) {
     let type = '';
     let headers = request.getPart('headers');
     let body = request.getPart('body');
-    curlified.push( 'curl');
+    curlified.push('curl');
     curlified.push('-X', request.getPart('method'));
-    curlified.push(`"${request.getPart("uri")}"`);
+    curlified.push(`"${request.getPart("uri")}" \\\n`);
 
     if (headers && headers.size) {
         for (let p of headers.entries()) {
-            let [h,v] = p;
+            let [h, v] = p;
             type = v;
-            curlified.push( '-H');
-            curlified.push( `"${h}: ${v}"`);
+            // curlified.push( '-H');
+            curlified.push(`  -H "${h}: ${v}" \\\n`);
         }
     }
 
@@ -211,11 +221,23 @@ function buildMap(obj) {
 
 function getPositiveResponse(httpMethod, resource) {
     const action = resource[httpMethod];
-    const actionKey = _.filter(Object.keys(action['responses']), function(statusCode) {
+    const actionKey = _.filter(Object.keys(action['responses']), function (statusCode) {
         return statusCode.startsWith('2');
     })[0];
 
-    return Object.assign( { statusCode: actionKey}, action['responses'][actionKey] );
+    return Object.assign({statusCode: actionKey}, action['responses'][actionKey]);
+}
+
+function getPositiveResponseExample(resourceItem, statusCode) {
+    const statusCodeResponse = resourceItem['responses'][statusCode];
+    if (!statusCodeResponse)
+        return;
+    const examples = statusCodeResponse['examples'];
+    let r = examples && _.map(Object.keys(examples), function (contentType) {
+        return examples[contentType];
+    })[0];
+
+    return r;
 }
 
 function getFirstResponseContentType(httpMethod, resource) {
@@ -235,7 +257,7 @@ function Request(data, definitions) {
     this.query = data.query;
     this.body = data.body;
 
-    this.getPart = function(key) {
+    this.getPart = function (key) {
         return this[key];
     }
 }
