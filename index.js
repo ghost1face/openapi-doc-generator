@@ -2,6 +2,7 @@ const fs = require('fs');
 const _ = require('lodash');
 const swaggerDoc = JSON.parse(fs.readFileSync('swagger.json', 'utf8'));
 const definitions = swaggerDoc.definitions;
+const tags = swaggerDoc.tags;
 const httpMethods = ["head", "options", "get", "post", "put", "patch", "delete"];
 const languages = ['curl'];
 
@@ -57,16 +58,17 @@ function writeFile(fileName, resourceCollection) {
                 return;
 
             fileContent += `### ${endpoint.operationId}\n\n` +
-                // TODO: endpoint description here
+                getOperationDescription(httpMethod, resource) + '\n\n' +
                 `${getEndpointUri(httpMethod, resource)}` +
                 '#### Example Request\n\n';
 
 
-            _.forEach(languages, function (language) {
+            _.forEach(languages, language => {
                 fileContent += getSampleApiCode(resource, httpMethod, language);
             });
 
             // parameter definitions
+            fileContent += getQueryParametersAsTable(httpMethod, resource);
 
             // response
             const positiveResponse = getPositiveResponse(httpMethod, resource);
@@ -106,7 +108,27 @@ function getResourceCollectionTitle(resourceCollection) {
 }
 
 function getResourceCollectionDescription(resourceCollection) {
-    return '';  // TODO: Use external json file that uses first part of operationid key,  Auth_Dostuff, key from Auth, value would have description maintained externally
+    let resourceCollectionPathItem = resourceCollection[0];
+    if (!resourceCollectionPathItem)
+        return '';
+
+    let operationKey = _.filter(Object.keys(resourceCollectionPathItem), key => key !== '_key')[0];
+    if(!operationKey)
+        return '';
+
+    let operation = resourceCollectionPathItem[operationKey];
+    if(!operation)
+        return '';
+
+    let primaryTag = operation.tags[0];
+    if (!primaryTag)
+        return '';
+
+    let detailTag = _.filter(tags, tag => tag.name === primaryTag)[0];
+    if(!detailTag)
+        return '';
+
+    return (detailTag.description || '').trim();
 }
 
 function getEndpointUri(httpMethod, resource) {
@@ -268,6 +290,33 @@ function getFirstResponseContentType(httpMethod, resource) {
 function getFirstAcceptedContentType(httpMethod, resource) {
     const action = resource[httpMethod];
     return action['consumes'][0];
+}
+
+function getOperationDescription(httpMethod, resource) {
+    let operation = resource[httpMethod];
+    return operation.description || operation.summary || '';
+}
+
+function getQueryParametersAsTable(httpMethod, resource){
+    let queryParams = getQueryParameters(resource[httpMethod])   ;
+    if(!queryParams || !queryParams.length)
+        return '';
+
+    let tableData = [];
+    let sortedQueryParams = _.sortBy(queryParams, qp => !qp.required);
+
+    tableData.push('Parameter | Type | Description', '---|---|---');
+    _.forEach(sortedQueryParams, queryParam => {
+        let row = `\`${queryParam.name}`;
+        if (!queryParam.required) {
+            row += ' (optional)';
+        }
+        row+= `\`|\`${queryParam.type}\`|${queryParam.description}`;
+        tableData.push(row);
+    });
+    tableData.push('&nbsp;|&nbsp;|[See search and pagination for more parameters](#search)')
+
+    return tableData.join('\n') + '\n\n';
 }
 
 function Request(data, definitions) {
