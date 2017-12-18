@@ -171,9 +171,30 @@ function getQueryParameters(resourceItem) {
 }
 
 function getBodyParameters(resourceItem) {
-    return _.filter(resourceItem['parameters'], function (param) {
-        return param['in'] === 'body';
-    });
+    return _(resourceItem['parameters'])
+        .filter(function (param) {
+            return param['in'] === 'body';
+        })
+        .map(function (body) {
+            const returnObj = Object.assign({}, body);
+            let schema = returnObj['schema'];
+            if (!schema)
+                return returnObj;
+
+            let ref = schema['$ref'];
+            if (!ref)
+                return returnObj;
+
+            let tokens = ref.split('/');
+            let typeName = tokens[tokens.length - 1];
+            if (!typeName)
+                return returnObj;
+
+            returnObj.example = definitions[typeName]['example'];
+
+            return returnObj;
+        })
+        .value()[0];
 }
 
 function renderRequest(language, request) {
@@ -199,13 +220,12 @@ function getCURLRequest(request) {
         for (let p of headers.entries()) {
             let [h, v] = p;
             type = v;
-            // curlified.push( '-H');
             curlified.push(`  -H "${h}: ${v}" \\\n`);
         }
     }
 
-    if (body) {
-        // TODO: Finish this:  https://raw.githubusercontent.com/swagger-api/swagger-ui/master/src/core/curlify.js
+    if (body && body.example) {
+        curlified.push(`  -d ${JSON.stringify(body.example).replace(/\\n/g, "")}\\\n`);
     }
 
     return curlified.join(' ');
