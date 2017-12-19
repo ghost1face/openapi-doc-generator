@@ -13,42 +13,33 @@ const swaggerDocGlobals = {
     schemes: swaggerDoc.schemes
 };
 
-// var swaggerResources = _(swaggerDoc.paths)
-//     .filter(function(path, indexOrKey, collection) {
-//         return indexOrKey.indexOf('v{version}') > -1;
-//     })
-//     .groupBy(function(path) {
-//         return path.replace('/v{version}', '').split('/')[0];
-//     })
-//     .value();
-
 const mappedResources = _.map(swaggerDoc.paths, function (data, key) {
-    data._key = key;
+    data._path = key;
     return data;
 });
 
 /*const filteredSwaggerResources = _.filter(mappedResources, function (path, indexOrKey) {
-    return path._key.indexOf('v{version}') > -1;
+    return path._path.indexOf('v{version}') > -1;
 });*/
 
 const groupedResources = _.groupBy(mappedResources, function (resource) {
-    // return resource._key.replace('/v{version}/', '').split('/')[2];
+    // return resource._path.replace('/v{version}/', '').split('/')[2];
 
     // let resourceCollectionPathItem = resourceCollection[0];
     // if (!resourceCollectionPathItem)
     //     return '';
 
-    let operationKey = _.filter(Object.keys(resource), key => key !== '_key')[0];
-    if(!operationKey)
+    let operationKey = _.filter(Object.keys(resource), key => key !== '_path')[0];
+    if (!operationKey)
         return '';
 
     let operation = resource[operationKey];
-    if(!operation)
+    if (!operation)
         return '';
 
     let primaryTag = operation['tags'][0];
     if (!primaryTag)
-        return resource._key.replace('/v{version}/', '').split('/')[2];
+        return resource._path.replace('/v{version}/', '').split('/')[2];
     return primaryTag.toLowerCase();
 });
 
@@ -84,8 +75,11 @@ function writeFile(fileName, resourceCollection) {
                 fileContent += getSampleApiCode(resource, httpMethod, language);
             });
 
-            // parameter definitions
+            // query parameter definitions
             fileContent += getQueryParametersAsTable(httpMethod, resource);
+
+            // body parameter definitions
+            fileContent += getBodyParametersAsTable(httpMethod, resource);
 
             // response
             const positiveResponse = getPositiveResponse(httpMethod, resource);
@@ -118,7 +112,7 @@ function writeFile(fileName, resourceCollection) {
 function getResourceCollectionTitle(resourceCollection) {
     const action = resourceCollection[0];
     const actionKey = Object.keys(action).filter(function (key) {
-        return key !== '_key';
+        return key !== '_path';
     })[0];
 
     const fallbackTitle = action[actionKey]['operationId'].split('_')[0];
@@ -127,12 +121,12 @@ function getResourceCollectionTitle(resourceCollection) {
     if (!resourceCollectionPathItem)
         return fallbackTitle;
 
-    let operationKey = _.filter(Object.keys(resourceCollectionPathItem), key => key !== '_key')[0];
-    if(!operationKey)
+    let operationKey = _.filter(Object.keys(resourceCollectionPathItem), key => key !== '_path')[0];
+    if (!operationKey)
         return fallbackTitle;
 
     let operation = resourceCollectionPathItem[operationKey];
-    if(!operation)
+    if (!operation)
         return fallbackTitle;
 
     let primaryTag = operation.tags[0];
@@ -140,7 +134,7 @@ function getResourceCollectionTitle(resourceCollection) {
         return fallbackTitle;
 
     let detailTag = _.filter(tags, tag => tag.name === primaryTag)[0];
-    if(!detailTag)
+    if (!detailTag)
         return fallbackTitle;
 
     return (detailTag['x-title'] || '').trim() || fallbackTitle;
@@ -151,12 +145,12 @@ function getResourceCollectionDescription(resourceCollection) {
     if (!resourceCollectionPathItem)
         return '';
 
-    let operationKey = _.filter(Object.keys(resourceCollectionPathItem), key => key !== '_key')[0];
-    if(!operationKey)
+    let operationKey = _.filter(Object.keys(resourceCollectionPathItem), key => key !== '_path')[0];
+    if (!operationKey)
         return '';
 
     let operation = resourceCollectionPathItem[operationKey];
-    if(!operation)
+    if (!operation)
         return '';
 
     let primaryTag = operation.tags[0];
@@ -164,7 +158,7 @@ function getResourceCollectionDescription(resourceCollection) {
         return '';
 
     let detailTag = _.filter(tags, tag => tag.name === primaryTag)[0];
-    if(!detailTag)
+    if (!detailTag)
         return '';
 
     return (detailTag.description || '').trim();
@@ -188,7 +182,7 @@ function getEndpointUri(httpMethod, resource) {
 }
 
 function getResourceFormattedUrl(resource) {
-    const uri = resource._key;
+    const uri = resource._path;
 
     /*return uri.replace(/{(\w*)}/g, function(match, key) {
         return key.toLowerCase() === 'version' ? swaggerDocGlobals.version : key;
@@ -295,7 +289,7 @@ function getCURLRequest(request) {
     return curlified.join(' ');
 }
 
-function getCSharpRequest(request){
+function getCSharpRequest(request) {
     let csharpified = [];
     let headers = request.getPart('headers');
     let body = request.getPart('body');
@@ -309,13 +303,13 @@ function getCSharpRequest(request){
     csharpified.push('using (var httpClient = new HttpClient())');
     csharpified.push('{');
 
-    indent+=indentSpaces;
+    indent += indentSpaces;
 
     csharpified.push(SPACE.repeat(indent) + `var request = new HttpRequestMessage(HttpMethod.${method}, "${uri}");`);
 
     if (headers && headers.size) {
         for (let p of headers.entries()) {
-            let [h,v] = p;
+            let [h, v] = p;
 
             csharpified.push(SPACE.repeat(indent) + `httpClient.Headers.Add("${h}", "${v}");`);
         }
@@ -344,8 +338,8 @@ function getJavaRequest(request) {
     javafied.push(`con.setRequestMethod("${method.toUpperCase()}");`);
 
     if (headers && headers.size) {
-        for(let p of headers.entries()) {
-            let [h,v] = p;
+        for (let p of headers.entries()) {
+            let [h, v] = p;
 
             javafied.push(`con.setRequestProperty("${h}", "${v}");`);
         }
@@ -408,9 +402,9 @@ function getOperationDescription(httpMethod, resource) {
     return operation.description || operation.summary || '';
 }
 
-function getQueryParametersAsTable(httpMethod, resource){
-    let queryParams = getQueryParameters(resource[httpMethod])   ;
-    if(!queryParams || !queryParams.length)
+function getQueryParametersAsTable(httpMethod, resource) {
+    let queryParams = getQueryParameters(resource[httpMethod]);
+    if (!queryParams || !queryParams.length)
         return '';
 
     let tableData = [];
@@ -422,12 +416,89 @@ function getQueryParametersAsTable(httpMethod, resource){
         if (!queryParam.required) {
             row += ' (optional)';
         }
-        row+= `\`|\`${queryParam.type}\`|${queryParam.description}`;
+        row += `\`|\`${queryParam.type}\`|${queryParam.description}`;
         tableData.push(row);
     });
     tableData.push('&nbsp;|&nbsp;|[See search and pagination for more parameters](#search)')
 
     return tableData.join('\n') + '\n\n';
+}
+
+function getBodyParametersAsTable(httpMethod, resource) {
+    let bodyParam = getBodyParameters(resource[httpMethod]);
+    if (!bodyParam)
+        return '';
+
+    let tableData = [];
+    tableData.push('Parameter | Type | Description', '---|---|---');
+
+    let schema = bodyParam['schema'];
+    if (!schema)
+        return;
+
+    let ref = schema['$ref'];
+    if (!ref)
+        return;
+
+    let tokens = ref.split('/');
+    let typeName = tokens[tokens.length - 1];
+    if (!typeName)
+        return;
+
+    const definition = definitions[typeName];
+    if (!definition)
+        return;
+
+    const properties = definition['properties'];
+    if (!properties)
+        return;
+
+    _.forEach(properties, (data, propName) => {
+        let row = `\`${propName}`;
+        if (!data.required) {
+            row += ' (optional)';
+        }
+        row += `\`|\`${data.type}\`|${(data.description || '')}`;
+        tableData.push(row);
+    });
+
+    return tableData.join('\n') + '\n\n';
+    // let sortedBodyParams = _.sortBy(bodyParams, bp => !bp.required);
+
+    /*
+    _.forEach(sortedBodyParams, bodyParam => {
+        let schema = bodyParam['schema'];
+        if (!schema)
+            return;
+
+        let ref = schema['$ref'];
+        if (!ref)
+            return;
+
+        let tokens = ref.split('/');
+        let typeName = tokens[tokens.length - 1];
+        if (!typeName)
+            return;
+
+        const definition = definitions[typeName];
+        if (!definition)
+            return;
+
+        const properties = definition['properties'];
+        if (!properties)
+            return;
+
+        _.forEach(properties, (data, propName) => {
+            let row = `\`${propName}`;
+            if (!data.required) {
+                row += ' (optional)';
+            }
+            row += `\`|\`${data.type}\`|${data.description}`;
+            tableData.push(row);
+        });
+
+        return tableData.join('\n') + '\n\n';
+    });*/
 }
 
 function Request(data, definitions) {
