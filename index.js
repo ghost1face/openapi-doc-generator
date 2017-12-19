@@ -74,7 +74,7 @@ function writeFile(fileName, resourceCollection) {
             if (typeof endpoint === 'undefined')
                 return;
 
-            fileContent += `### ${endpoint.operationId}\n\n` +
+            fileContent += `### ${(endpoint['x-title'] || endpoint.operationId)}\n\n` +
                 getOperationDescription(httpMethod, resource) + '\n\n' +
                 `${getEndpointUri(httpMethod, resource)}` +
                 '#### Example Request\n\n';
@@ -121,7 +121,29 @@ function getResourceCollectionTitle(resourceCollection) {
         return key !== '_key';
     })[0];
 
-    return action[actionKey]['operationId'].split('_')[0];
+    const fallbackTitle = action[actionKey]['operationId'].split('_')[0];
+
+    let resourceCollectionPathItem = resourceCollection[0];
+    if (!resourceCollectionPathItem)
+        return fallbackTitle;
+
+    let operationKey = _.filter(Object.keys(resourceCollectionPathItem), key => key !== '_key')[0];
+    if(!operationKey)
+        return fallbackTitle;
+
+    let operation = resourceCollectionPathItem[operationKey];
+    if(!operation)
+        return fallbackTitle;
+
+    let primaryTag = operation.tags[0];
+    if (!primaryTag)
+        return fallbackTitle;
+
+    let detailTag = _.filter(tags, tag => tag.name === primaryTag)[0];
+    if(!detailTag)
+        return fallbackTitle;
+
+    return (detailTag['x-title'] || '').trim() || fallbackTitle;
 }
 
 function getResourceCollectionDescription(resourceCollection) {
