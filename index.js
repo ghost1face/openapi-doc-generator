@@ -458,7 +458,7 @@ function getBodyParametersAsTable(httpMethod, resource) {
 
     _.forEach(properties, (data, propName) => {
         let row = `\`${propName}`;
-        if (!data.required) {
+        if (!definition['required'] || !_.find(definition['required'], r => r === propName)) {
             row += ' (optional)';
         }
 
