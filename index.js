@@ -70,7 +70,6 @@ function writeFile(fileName, resourceCollection) {
                 `${getEndpointUri(httpMethod, resource)}` +
                 '#### Example Request\n\n';
 
-
             _.forEach(languages, language => {
                 fileContent += getSampleApiCode(resource, httpMethod, language);
             });
@@ -425,6 +424,15 @@ function getQueryParametersAsTable(httpMethod, resource) {
 }
 
 function getBodyParametersAsTable(httpMethod, resource) {
+    const getParameterType = prop => {
+        if (prop.type) return prop.type;
+
+        let ref = prop['$ref'];
+        if (!ref) return;
+        let tokens = ref.split('/');
+        return tokens[tokens.length - 1];
+    };
+
     let bodyParam = getBodyParameters(resource[httpMethod]);
     if (!bodyParam)
         return '';
@@ -436,12 +444,7 @@ function getBodyParametersAsTable(httpMethod, resource) {
     if (!schema)
         return;
 
-    let ref = schema['$ref'];
-    if (!ref)
-        return;
-
-    let tokens = ref.split('/');
-    let typeName = tokens[tokens.length - 1];
+    let typeName = getParameterType(schema);
     if (!typeName)
         return;
 
@@ -458,7 +461,11 @@ function getBodyParametersAsTable(httpMethod, resource) {
         if (!data.required) {
             row += ' (optional)';
         }
-        row += `\`|\`${data.type}\`|${(data.description || '')}`;
+
+        // TODO: Use link to specific type
+        let typeColumnValue = data.type ? `\`${data.type}${(data.format ? ` (${data.format})` : '')}\`` : `\`${getParameterType(data)}\``;
+        
+        row += `\`|${typeColumnValue}|${(data.description || '')}`;
         tableData.push(row);
     });
 
