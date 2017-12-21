@@ -169,7 +169,7 @@ function getEndpointUri(httpMethod, resource) {
     });
 
     if (params && params.length) {
-        params = '?' + params.join('\n        &');
+        params = '?\n        ' + params.join('\n        &');
     }
 
     const result =
@@ -456,18 +456,41 @@ function getBodyParametersAsTable(httpMethod, resource) {
     if (!properties)
         return;
 
-    _.forEach(properties, (data, propName) => {
-        let row = `\`${propName}`;
-        if (!definition['required'] || !_.find(definition['required'], r => r === propName)) {
+    let sortedFields = _(properties)
+        .map((data, propName) => {
+            return Object.assign({}, data, {
+                name: propName,
+                required: definition['required'] && _.find(definition['required'], r => r === propName)
+            });
+        })
+        .orderBy(['required', 'name'], ['asc', 'asc'])
+        .value();
+
+    _.forEach(sortedFields, field => {
+        let row = `\`${field.name}`;
+        if (!field.required) {
             row += ' (optional)';
         }
 
         // TODO: Use link to specific type
-        let typeColumnValue = data.type ? `\`${data.type}${(data.format ? ` (${data.format})` : '')}\`` : `\`${getParameterType(data)}\``;
-        
-        row += `\`|${typeColumnValue}|${(data.description || '')}`;
+        let typeColumnValue = field.type ? `\`${field.type}${(field.format ? ` (${field.format})` : '')}\`` : `\`${getParameterType(field)}\``;
+
+        row += `\`|${typeColumnValue}|${(field.description || '')}`;
         tableData.push(row);
     });
+
+    // _.forEach(properties, (data, propName) => {
+    //     let row = `\`${propName}`;
+    //     if (!definition['required'] || !_.find(definition['required'], r => r === propName)) {
+    //         row += ' (optional)';
+    //     }
+    //
+    //     // TODO: Use link to specific type
+    //     let typeColumnValue = data.type ? `\`${data.type}${(data.format ? ` (${data.format})` : '')}\`` : `\`${getParameterType(data)}\``;
+    //
+    //     row += `\`|${typeColumnValue}|${(data.description || '')}`;
+    //     tableData.push(row);
+    // });
 
     return tableData.join('\n') + '\n\n';
     // let sortedBodyParams = _.sortBy(bodyParams, bp => !bp.required);
