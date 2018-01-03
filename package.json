@@ -6,13 +6,17 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "bin": {
+    "swagger2md": "./index.js"
+  },
   "keywords": [
     "markdown"
   ],
   "author": "Daniel Destouche",
   "license": "ISC",
   "dependencies": {
-    "lodash": "^4.17.4"
+    "lodash": "^4.17.4",
+    "commander": "^2.12.2"
   },
   "repository": "https://github.com/ghost1face/openapi-doc-generator.git"
 }
