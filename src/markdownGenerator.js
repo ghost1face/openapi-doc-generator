@@ -123,7 +123,7 @@ MarkdownGenerator.prototype._writeFile = function (fileName, pathItems) {
         });
     });
 
-    var outputPath = path.join(path.resolve(path.normalize(this._outputDir)), path.resolve(path.normalize(fileName)));
+    var outputPath = path.join(path.resolve(path.normalize(this._outputDir)), fileName);
 
     fs.writeFileSync(outputPath, fileContent);
 }

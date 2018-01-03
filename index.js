@@ -8,10 +8,10 @@ function runApp(filePath, outputDir) {
 }
 
 program.arguments('<file>')
-    .option('-o, -output <outputDir>', 'The directory to output markdown to.', process.cwd())
+    .option('-o, --output <outputDir>', 'The directory to output markdown to.', process.cwd())
     .action(function (file) {
         file = path.resolve(path.normalize(file));
 
-        runApp(file, program.outputDir);
+        runApp(file, program.output);
     })
     .parse(process.argv);
