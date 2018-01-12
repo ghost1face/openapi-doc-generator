@@ -96,10 +96,13 @@ function renderRequest(language, request) {
     switch (language.code) {
         case 'curl':
             output = getCURLRequest(request);
+            break;
         case 'cs':
             output = getCSharpRequest(request);
+            break;
         case 'java':
             output = getJavaRequest(request);
+            break;
         default:
             break;
     }
