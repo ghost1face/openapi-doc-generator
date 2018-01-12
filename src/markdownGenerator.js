@@ -209,14 +209,14 @@ MarkdownGenerator.prototype._getEndpointUri = function (httpMethod, pathItem) {
 
     const result =
         '```endpoint\n' +
-        httpMethod.toUpperCase() + ' ' + this._getResourceFormattedUrl(pathItem) + params + (permissionScopes && (' ' + this._getScopes(httpMethod, pathItem))) + '\n' +
+        httpMethod.toUpperCase() + ' ' + this._getResourceFormattedUrl(pathItem) + params + (permissionScopes && (' ' + permissionScopes)) + '\n' +
         '```\n\n';
 
     return result;
 }
 
 MarkdownGenerator.prototype._getScopes = function(httpMethod, pathItem) {
-    return pathItem[httpMethod]['x-permission'];
+    return pathItem[httpMethod]['x-permission'] || '';
 }
 
 MarkdownGenerator.prototype._getQueryParameters = function (pathItem) {
