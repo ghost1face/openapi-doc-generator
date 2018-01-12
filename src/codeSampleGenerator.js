@@ -11,7 +11,7 @@ function getCURLRequest(request) {
         for (let p of headers.entries()) {
             let [h, v] = p;
             type = v;
-            curlified.push('  -H "' + h + ': ' + v + ' \\\n');
+            curlified.push('  -H "' + h + ': ' + v + '" \\\n');
         }
     }
 
