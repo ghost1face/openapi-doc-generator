@@ -201,16 +201,22 @@ MarkdownGenerator.prototype._getEndpointUri = function (httpMethod, pathItem) {
         return p['name'] + '={' + p['name'].replace('.', '') + '}';
     });
 
+    var permissionScopes = this._getScopes(httpMethod, pathItem);
+
     if (params && params.length) {
         params = '?\n        ' + params.join('\n        &');
     }
 
     const result =
         '```endpoint\n' +
-        httpMethod.toUpperCase() + ' ' + this._getResourceFormattedUrl(pathItem) + params + '\n' +
+        httpMethod.toUpperCase() + ' ' + this._getResourceFormattedUrl(pathItem) + params + (permissionScopes && (' ' + this._getScopes(httpMethod, pathItem))) + '\n' +
         '```\n\n';
 
     return result;
+}
+
+MarkdownGenerator.prototype._getScopes = function(httpMethod, pathItem) {
+    return pathItem[httpMethod]['x-permission'];
 }
 
 MarkdownGenerator.prototype._getQueryParameters = function (pathItem) {
