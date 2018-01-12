@@ -286,8 +286,8 @@ MarkdownGenerator.prototype._buildRequest = function (httpMethod, pathItem) {
 }
 
 MarkdownGenerator.prototype._renderRequest = function (language, request) {
-    var x =  generateCodeSample(language, request);
-    return x;
+    var codeSample =  generateCodeSample(language, request);
+    return codeSample;
 }
 
 MarkdownGenerator.prototype._getQueryParametersAsTable = function (httpMethod, pathItem) {
@@ -369,7 +369,7 @@ MarkdownGenerator.prototype._getBodyParametersAsTable = function (httpMethod, pa
 
         // TODO: Use link to specific type
         var typeColumnValue = field.type ?
-            ('`' + field.type + (field.format ? (' ' + field.format) : '') + '`') :
+            ('`' + field.type + (field.maxLength ? ('(' + field.maxLength + ')') : '') + (field.format ? (' ' + field.format) : '') + '`') :
             ('`' + getParameterType(field) + '`');
 
         // row += `\`|${typeColumnValue}|${(field.description || '')}`;
