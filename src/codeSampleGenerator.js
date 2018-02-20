@@ -80,7 +80,7 @@ function getJavaRequest(request) {
 
     if (body && body.example) {
         javafied.push('conn.setDoOutput(true);');
-        javafied.push('String input = JSON.stringify(JSON.stringify(body.example)).replace(/\\n/g, "");');
+        javafied.push('String input = ' + JSON.stringify(JSON.stringify(body.example)).replace(/\\n/g, "") + ');');
         javafied.push('OutputStream os = conn.getOutputStream();');
         javafied.push('os.write(input.getBytes());');
         javafied.push('os.flush();');
