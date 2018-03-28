@@ -34,6 +34,12 @@ MarkdownGenerator.prototype.emit = function () {
 
         that._writeFile(fileName, pathItems);
     });
+
+    debugger;
+
+    var definitionPaths =this._getReturnModelsFromResources(pathItemCollection);
+    // var definitionString = this._getModelDefinitions(definitionPaths);
+    this._writeModelDefinitions(definitionPaths);
 }
 
 MarkdownGenerator.prototype._isValid = function (swaggerDoc) {
@@ -215,7 +221,7 @@ MarkdownGenerator.prototype._getEndpointUri = function (httpMethod, pathItem) {
     return result;
 }
 
-MarkdownGenerator.prototype._getScopes = function(httpMethod, pathItem) {
+MarkdownGenerator.prototype._getScopes = function (httpMethod, pathItem) {
     return pathItem[httpMethod]['x-permission'] || '';
 }
 
@@ -265,9 +271,9 @@ MarkdownGenerator.prototype._getSampleApiCode = function (pathItem, httpMethod, 
     var requestString = this._renderRequest(language, request);
 
     var returnString =
-    '```' + language.code + '\n' +
-    requestString + '\n' +
-    '```\n\n';
+        '```' + language.code + '\n' +
+        requestString + '\n' +
+        '```\n\n';
 
     return returnString;
 }
@@ -292,7 +298,7 @@ MarkdownGenerator.prototype._buildRequest = function (httpMethod, pathItem) {
 }
 
 MarkdownGenerator.prototype._renderRequest = function (language, request) {
-    var codeSample =  generateCodeSample(language, request);
+    var codeSample = generateCodeSample(language, request);
     return codeSample;
 }
 
@@ -410,6 +416,120 @@ MarkdownGenerator.prototype._getPositiveResponseExample = function (pathItem, st
 MarkdownGenerator.prototype._getFirstResponseContentType = function (httpMethod, pathItem) {
     const action = pathItem[httpMethod];
     return action['produces'][0];
+}
+
+MarkdownGenerator.prototype._getReturnModelsFromResources = function(pathItemCollection) {
+    return _(pathItemCollection).map(function (pathItems, key) {
+        return _.map(pathItems, function (pathItem, index) {
+            return _.map(pathItem, function (action, httpMethod) {
+                var successResponses = _.filter(action['responses'], function (response, statusCode) {
+                    return statusCode < 300;
+                });
+
+                var returnSchemas = _.map(successResponses, function (response) {
+                    var schema = response['schema'];
+                    if (!schema) return;
+
+                    var ref = schema['$ref'];
+                    if (ref) return ref;
+
+                    var items = schema['items'];
+                    if (!items) return;
+
+                    ref = items['$ref'];
+
+                    return ref;
+                });
+
+                returnSchemas = _.filter(returnSchemas, function(responseSchema) {
+                    return responseSchema;
+                });
+
+                return returnSchemas;
+            });
+        });
+    })
+        .flattenDeep()
+        .compact()
+        .uniq()
+        .sort()
+        .value();
+}
+
+MarkdownGenerator.prototype._writeModelDefinitions = function(definitionPaths){
+    var definitionString = this._getModelDefinitions(definitionPaths);
+
+    var outputPath = path.join(path.resolve(path.normalize(this._outputDir)), 'typedefs.md');
+
+    fs.writeFileSync(outputPath, definitionString);
+}
+
+MarkdownGenerator.prototype._getModelDefinitions = function(definitionPaths) {
+    var self = this;
+    var definitionString = _(definitionPaths)
+        .sort()
+        .map(function(definitionPath) {
+            var modelName = '### ' + self._getModelNameFromDefinitionRef(definitionPath) + ' Model';
+            var definitionTable = self._getModelDefinitionTable(definitionPath);
+
+            return [modelName, definitionTable].join('\n\n');
+        })
+        .value();
+
+    return ['## Type Definitions'].concat(definitionString).join('\n\n');
+}
+
+MarkdownGenerator.prototype._getModelNameFromDefinitionRef = function(definitionPath) {
+    var tokens = definitionPath.split('/')   ;
+    return tokens[tokens.length - 1];
+}
+
+MarkdownGenerator.prototype._getModelDefinitionTable = function(definitionPath) {
+    var tableData = [];
+    tableData.push('Parameter | Type | Description', '---|---|---');
+
+    var typeName = this._getModelNameFromDefinitionRef(definitionPath);
+    if (!typeName)
+        return;
+
+    var definition = this._definitions[typeName];
+    if (!definition)
+        return;
+
+    const properties = definition['properties'];
+    if (!properties)
+        return;
+
+    let fields = _(properties)
+        .map(function (data, propName) {
+            return Object.assign({}, data, {
+                name: propName
+                // required: definition['required'] && _.find(definition['required'], function (r) {
+                //     return r === propName;
+                // })
+            });
+        })
+        // .orderBy(['name'], ['asc'])
+        .value();
+
+    var self = this;
+    _.forEach(fields, function (field) {
+        let row = `\`${field.name}`;
+        // if (!field.required) {
+        //     row += ' (optional)';
+        // }
+// [`Episode`](#)
+        // TODO: Use link to specific type
+        var typeColumnValue = field.type ?
+            ('`' + field.type + (field.maxLength ? ('(' + field.maxLength + ')') : '') + (field.format ? (' ' + field.format) : '') + '`') :
+            ('[`' + self._getModelNameFromDefinitionRef(field['$ref']) + '`](#' + self._getModelNameFromDefinitionRef(field['$ref'].toLowerCase() + '-model)'));
+
+        // row += `\`|${typeColumnValue}|${(field.description || '')}`;
+        row += '`|' + typeColumnValue + '|' + (field.description || '');
+        tableData.push(row);
+    });
+
+    return tableData.join('\n') + '\n\n';
 }
 
 module.exports = MarkdownGenerator;
