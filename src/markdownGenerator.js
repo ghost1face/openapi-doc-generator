@@ -38,7 +38,7 @@ MarkdownGenerator.prototype.emit = function () {
     debugger;
 
     let definitionPaths = this._getReturnModelsFromResources(pathItemCollection);
-    
+
     this._writeModelDefinitions(definitionPaths);
 }
 
@@ -323,7 +323,9 @@ MarkdownGenerator.prototype._getQueryParametersAsTable = function (httpMethod, p
         row += '`|`' + queryParam.type + '`|' + queryParam.description;
         tableData.push(row);
     });
-    tableData.push('&nbsp;|&nbsp;|[See search and pagination for more parameters](#search)')
+
+    if (httpMethod === 'get')
+        tableData.push('&nbsp;|&nbsp;|[See search and pagination for more parameters](#search)')
 
     return tableData.join('\n') + '\n\n';
 }
@@ -398,7 +400,7 @@ MarkdownGenerator.prototype._getPositiveResponse = function (httpMethod, pathIte
         return statusCode.startsWith('2');
     })[0];
 
-    return Object.assign({ statusCode: actionKey }, action['responses'][actionKey]);
+    return Object.assign({statusCode: actionKey}, action['responses'][actionKey]);
 }
 
 MarkdownGenerator.prototype._getPositiveResponseExample = function (pathItem, statusCode) {
